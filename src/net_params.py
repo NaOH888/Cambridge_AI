@@ -2,7 +2,7 @@ workers = 2
 
 data_root = "../src"
 
-data_fold = {"ORI" : "/data",
+data_fold = {"ORI" : "/dataset(flowers)",
              "DRM" : "/deepdream"}
 
 learn_rate = 0.001
