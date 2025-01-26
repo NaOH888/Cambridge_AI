@@ -11,7 +11,5 @@ for pic_path in os.listdir(r"C:\Users\26922\Desktop\pic"):
     print(max(x / y, y / x))
     if max(x / y, y / x) + 0.15 > 1:
         pic_ = cv.resize(pic[0 : min(x, y) - 1, 0 : min(x, y) - 1, :], img_size)
-        cv.imwrite(fr"./dataset(butterflies)/{count}.png", pic_)
+        cv.imwrite(fr"raw_data/dataset(butterflies)/{count}.png", pic_)
     count += 1
-    if count >= 200:
-        break
