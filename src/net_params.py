@@ -1,3 +1,6 @@
+import torch
+import torch.nn as nn
+
 workers = 2
 
 data_root = "../src"
@@ -15,3 +18,4 @@ input_image_size_x = 512
 input_image_size_y = 512
 input_image_depth = 3
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

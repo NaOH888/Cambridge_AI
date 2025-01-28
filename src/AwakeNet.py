@@ -1,12 +1,12 @@
 import math
 
-import torch
-import torch.nn as nn
-from numpy import ndarray
 
+from numpy import ndarray
+import torch.nn as nn
+import torch
 import net_params
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 class AwakeNetGen(nn.Module):
     """
@@ -72,12 +72,12 @@ class AwakeNetGen(nn.Module):
         x = self.fc1(x)
         x = self.activ4(x)
         x = self.fc2(x)
-        x = self.activ5(x)
+        x = (self.activ5(x) + 1) / 2 * 255
         x = torch.reshape(x, shape=[bs, 3, 512, 512])
         return x
     def initialize_weights(self):
         for m in self.modules():
-            if isinstance(m, nn.Conv2d):
+            if isinstance(m, nn.ConvTranspose2d):
                 torch.nn.init.xavier_uniform_(m.weight)
                 nn.init.constant_(m.bias, 0.1)
             if isinstance(m, nn.Linear):
@@ -154,6 +154,14 @@ class AwakeNetDis(nn.Module):
         origin = self.activ5(origin)
         # out : [batch_size, 1]
         return origin
+    def initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.ConvTranspose2d):
+                torch.nn.init.xavier_uniform_(m.weight)
+                nn.init.constant_(m.bias, 0.1)
+            if isinstance(m, nn.Linear):
+                torch.nn.init.kaiming_normal_(m.weight, mode='fan_in')
+                nn.init.constant_(m.bias, 0.1)
 class AwakeNet(nn.Module):
     def __init__(self, n_dis : int):
         super(AwakeNet, self).__init__()
@@ -198,47 +206,4 @@ class AwakeNet(nn.Module):
         self.generator.initialize_weights()
         for dis in self.discriminators:
             dis.initialize_weights()
-
-criterion = nn.BCELoss()
-
-def train_one_batch(net : AwakeNet, batched_real_img : torch.Tensor, batched_dreamt_img : torch.Tensor):
-    real_scores, fake_scores_d, fake_scores_g = net(batched_real_img, batched_dreamt_img)
-
-    net.generator.optim.zero_grad()
-
-    g_loss = criterion(fake_scores_g, torch.ones_like(fake_scores_g))
-    print(f"generator loss : {g_loss}")
-    g_loss.backward()
-    net.generator.optim.step()
-
-    for dis in net.discriminators:
-        dis.optim.zero_grad()
-
-    d_real_loss = criterion(real_scores, torch.ones_like(real_scores))
-    d_fake_loss = criterion(fake_scores_d, torch.zeros_like(fake_scores_d))
-
-    d_loss = torch.add(d_real_loss, d_fake_loss)
-    print(f"discriminator loss : {d_loss}")
-    d_loss.backward()
-    for dis in net.discriminators:
-        dis.optim.step()
-
-
-def train(net : AwakeNet, real_imgs : torch.Tensor, fake_dreamt_img : torch.Tensor):
-    whole_size = real_imgs.shape[0]
-    if whole_size <= net_params.batch_size:
-        train_one_batch(net, real_imgs, fake_dreamt_img)
-    else:
-        for i in range(math.ceil(whole_size / net_params.batch_size)):
-            train_one_batch(
-                net,
-                real_imgs[i * net_params.batch_size : min((i + 1) * net_params.batch_size - 1, whole_size)],
-                fake_dreamt_img[i * net_params.batch_size : min((i + 1) * net_params.batch_size - 1, whole_size)])
-## test
-print(device)
-train_net = AwakeNet(n_dis =1)
-train_net.initial()
-train_net.to(device)
-train_net.train()
-train(train_net, torch.ones((160,3,512,512)).to(device), torch.ones((160,3,512,512)).to(device))
 
