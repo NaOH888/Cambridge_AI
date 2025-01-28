@@ -31,7 +31,7 @@ class AwakeNetGen(nn.Module):
                                padding=4)
         self.pool3 = nn.AdaptiveAvgPool3d(output_size=(1024, 1024, 10))
         self.activ3 = nn.LeakyReLU(negative_slope=0.2)
-        # 现在应该是 [batch, 1024, 1024, 10], 然后最后一维求和，变成[batch,2048, 5120]
+        # 现在应该是 [batch, 1024, 1024, 10], 然后最后一维求和，变成[batch, 2048, 5120]
         self.fc1 = nn.Linear(in_features=5120, out_features=1024,bias=True)
         self.activ4 = nn.LeakyReLU(negative_slope=0.2)
         # [batch,2048, 1024]
@@ -85,6 +85,7 @@ class AwakeNetDis(nn.Module):
         self.activ4 = nn.LeakyReLU(negative_slope=0.2)
         self.fc4 = nn.Linear(in_features=512, out_features=1, bias=True)
         self.activ5 = nn.Sigmoid()
+
     def forward(self, x : ndarray):
         if x.shape != [net_params.batch_size, net_params.input_image_depth, net_params.input_image_size]:
             raise ValueError(fr"Input's size should be "
@@ -107,3 +108,18 @@ class AwakeNetDis(nn.Module):
         x = self.activ5(x)
         # out : [batch_size, 1]
         return x
+
+class AwakeNet(nn.Module):
+    def __init__(self):
+        super(AwakeNet, self).__init__()
+
+        self.generator = AwakeNetGen()
+        self.discriminator = AwakeNetDis()
+
+    def forward(self, x : torch.Tensor, mode: str):
+        if mode == 'gen':
+            return self.generator(x)
+        elif mode == 'dis':
+            return self.discriminator(x)
+        else:
+            raise ValueError("Invalid mode. Use 'gen' for generator or 'dis' for discriminator.")
