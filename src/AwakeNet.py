@@ -111,6 +111,7 @@ class AwakeNetDis(nn.Module):
         self.fc4 = nn.Linear(in_features=512, out_features=1, bias=True)
         self.activ5 = nn.Sigmoid()
 
+
         self.optim = torch.optim.Adam(self.parameters(), lr=net_params.learning_rate)
 
     def forward(self, origin : torch.Tensor, dreamt : torch.Tensor):
@@ -153,16 +154,6 @@ class AwakeNetDis(nn.Module):
         origin = self.activ5(origin)
         # out : [batch_size, 1]
         return origin
-
-    def initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                torch.nn.init.xavier_uniform_(m.weight)
-                nn.init.constant_(m.bias, 0.1)
-            if isinstance(m, nn.Linear):
-                torch.nn.init.kaiming_normal_(m.weight, mode='fan_in')
-                nn.init.constant_(m.bias, 0.1)
-
 class AwakeNet(nn.Module):
     def __init__(self, n_dis : int):
         super(AwakeNet, self).__init__()
@@ -250,6 +241,4 @@ train_net.initial()
 train_net.to(device)
 train_net.train()
 train(train_net, torch.ones((160,3,512,512)).to(device), torch.ones((160,3,512,512)).to(device))
-
-
 
