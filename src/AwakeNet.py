@@ -1,12 +1,23 @@
 import math
+<<<<<<< HEAD
 import os.path
+=======
+
+import torch
+import torch.nn as nn
+from numpy import ndarray
+>>>>>>> 909c74031a5e818be9d304dad3d0f31736f198e2
 
 from numpy import ndarray
 import torch.nn as nn
 import torch
 import net_params
 
+<<<<<<< HEAD
 
+=======
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+>>>>>>> 909c74031a5e818be9d304dad3d0f31736f198e2
 
 class AwakeNetGen(nn.Module):
     """
@@ -16,6 +27,7 @@ class AwakeNetGen(nn.Module):
     def __init__(self):
         super(AwakeNetGen, self).__init__()
         # in : [batch_size, 3, 512, 512]
+<<<<<<< HEAD
         self.conv1 = nn.Conv2d(in_channels=net_params.input_image_depth,
                                out_channels=10,
                                kernel_size=(7,7),
@@ -57,6 +69,35 @@ class AwakeNetGen(nn.Module):
         # [batch,64, 512]
         self.fc2 = nn.Linear(in_features=512, out_features=512, bias=True)
         self.activ6 = nn.Tanh()
+=======
+        self.conv1 = nn.ConvTranspose2d(in_channels=net_params.input_image_depth,
+                               out_channels=10,
+                               kernel_size=(3,3),
+                               stride=2,
+                               padding=5)
+        self.pool1 = nn.MaxPool2d(kernel_size=4, stride=2, padding=2)
+        self.activ1 = nn.LeakyReLU(negative_slope=0.2)
+        self.conv2 = nn.ConvTranspose2d(in_channels=10,
+                               out_channels=10,
+                               kernel_size=(3,3),
+                               stride=2,
+                               padding=5)
+        self.pool2 = nn.MaxPool2d(kernel_size=5)
+        self.activ2 = nn.LeakyReLU(negative_slope=0.2)
+        self.conv3 = nn.ConvTranspose2d(in_channels=10,
+                               out_channels=10,
+                               kernel_size=(5, 5),
+                               stride=2,
+                               padding=4)
+        self.pool3 = nn.AdaptiveAvgPool3d(output_size=(10,1024, 1024 ))
+        self.activ3 = nn.LeakyReLU(negative_slope=0.2)
+        # 现在应该是 [batch, 10, 1024, 1024], 然后第二维求和，变成[batch,1024, 1024]
+        self.fc1 = nn.Linear(in_features=1024, out_features=2048,bias=True)
+        self.activ4 = nn.LeakyReLU(negative_slope=0.2)
+        # [batch,2048, 1024]
+        self.fc2 = nn.Linear(in_features=2048, out_features=768, bias=True)
+        self.activ5 = nn.Tanh()
+>>>>>>> 909c74031a5e818be9d304dad3d0f31736f198e2
         # then resize to [batch, 3, 512, 512]
         self.optim = torch.optim.Adam(self.parameters(), lr=net_params.learning_rate)
 
@@ -85,23 +126,35 @@ class AwakeNetGen(nn.Module):
         x = self.pool3(x)
         x = self.bn3(x)
         x = self.activ3(x)
+<<<<<<< HEAD
         x = self.conv4(x)
         x = self.pool4(x)
         x = self.bn4(x)
+=======
+        x = torch.sum(x, dim=1, keepdim=False)
+        x = torch.reshape(x, shape=[bs,1024, 1024])
+        x = self.fc1(x)
+>>>>>>> 909c74031a5e818be9d304dad3d0f31736f198e2
         x = self.activ4(x)
         x = self.do2(x)
         x = self.bn4(x)
         x = self.fc1(x)
         x = self.activ5(x)
+<<<<<<< HEAD
         x = self.fc2(x)
         x = (self.activ6(x) + 1) / 2 * 255
+=======
+>>>>>>> 909c74031a5e818be9d304dad3d0f31736f198e2
         x = torch.reshape(x, shape=[bs, 3, 512, 512])
         return x
     def initialize_weights(self):
         for m in self.modules():
+<<<<<<< HEAD
             if isinstance(m, nn.ConvTranspose2d):
                 torch.nn.init.xavier_uniform_(m.weight)
                 nn.init.constant_(m.bias, 0.1)
+=======
+>>>>>>> 909c74031a5e818be9d304dad3d0f31736f198e2
             if isinstance(m, nn.Conv2d):
                 torch.nn.init.xavier_uniform_(m.weight)
                 nn.init.constant_(m.bias, 0.1)
@@ -179,6 +232,7 @@ class AwakeNetDis(nn.Module):
         origin = self.activ5(origin)
         # out : [batch_size, 1]
         return origin
+<<<<<<< HEAD
     def initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.ConvTranspose2d):
@@ -221,6 +275,22 @@ class AwakeNet(nn.Module):
         # x & dream : [batch, depth, size_X, size_Y]
 
         if real.shape[1:] != (
+=======
+class AwakeNet(nn.Module):
+    def __init__(self, n_dis : int):
+        super(AwakeNet, self).__init__()
+        if n_dis < 1:
+            raise ValueError(fr"n_dis should be a positive integer")
+        self.generator = AwakeNetGen()
+        self.discriminators = nn.Sequential()
+        for i in range(n_dis):
+            self.discriminators.add_module(str(i), AwakeNetDis())
+    def forward(self, x : torch.Tensor, dream : torch.Tensor):
+
+        # x & dream : [batch, depth, size_X, size_Y]
+
+        if x.shape[1:] != (
+>>>>>>> 909c74031a5e818be9d304dad3d0f31736f198e2
                        net_params.input_image_depth,
                        net_params.input_image_size_x,
                        net_params.input_image_size_y):
@@ -229,25 +299,89 @@ class AwakeNet(nn.Module):
                              net_params.input_image_depth,  
                              net_params.input_image_size_x, 
                              net_params.input_image_size_y}"
+<<<<<<< HEAD
                              fr",but it is {real.shape}")
         if real.shape != dream.shape:
             raise ValueError(fr"The shape of raw image and dreamt image should be the same")
 
 
         generated_real = self.generator(dream)
+=======
+                             fr",but it is {x.shape}")
+        if x.shape != dream.shape:
+            raise ValueError(fr"The shape of raw image and dreamt image should be the same")
+
+
+        generated_dream = self.generator(x)
+>>>>>>> 909c74031a5e818be9d304dad3d0f31736f198e2
 
         discriminate_real_score = []
         discriminate_fake_score_usedByDiscriminatorTrain = []
         discriminate_fake_score_usedByGeneratorTrain = []
 
         for dis in self.discriminators:
+<<<<<<< HEAD
             discriminate_real_score.append(dis(real, dream))
             discriminate_fake_score_usedByDiscriminatorTrain.append(dis(generated_real.detach(), dream))
             discriminate_fake_score_usedByGeneratorTrain.append(dis(generated_real, dream))
+=======
+            discriminate_real_score.append(dis(x, dream))
+            discriminate_fake_score_usedByDiscriminatorTrain.append(dis(generated_dream.detach(), dream))
+            discriminate_fake_score_usedByGeneratorTrain.append(dis(generated_dream, dream))
+>>>>>>> 909c74031a5e818be9d304dad3d0f31736f198e2
         return (torch.stack(discriminate_real_score,dim=0),
                 torch.stack(discriminate_fake_score_usedByDiscriminatorTrain,dim=0),
                 torch.stack(discriminate_fake_score_usedByGeneratorTrain,dim=0))
     def initial(self):
+<<<<<<< HEAD
 
         pass
+=======
+        self.generator.initialize_weights()
+        for dis in self.discriminators:
+            dis.initialize_weights()
+
+criterion = nn.BCELoss()
+
+def train_one_batch(net : AwakeNet, batched_real_img : torch.Tensor, batched_dreamt_img : torch.Tensor):
+    real_scores, fake_scores_d, fake_scores_g = net(batched_real_img, batched_dreamt_img)
+
+    net.generator.optim.zero_grad()
+
+    g_loss = criterion(fake_scores_g, torch.ones_like(fake_scores_g))
+    print(f"generator loss : {g_loss}")
+    g_loss.backward()
+    net.generator.optim.step()
+
+    for dis in net.discriminators:
+        dis.optim.zero_grad()
+
+    d_real_loss = criterion(real_scores, torch.ones_like(real_scores))
+    d_fake_loss = criterion(fake_scores_d, torch.zeros_like(fake_scores_d))
+
+    d_loss = torch.add(d_real_loss, d_fake_loss)
+    print(f"discriminator loss : {d_loss}")
+    d_loss.backward()
+    for dis in net.discriminators:
+        dis.optim.step()
+
+
+def train(net : AwakeNet, real_imgs : torch.Tensor, fake_dreamt_img : torch.Tensor):
+    whole_size = real_imgs.shape[0]
+    if whole_size <= net_params.batch_size:
+        train_one_batch(net, real_imgs, fake_dreamt_img)
+    else:
+        for i in range(math.ceil(whole_size / net_params.batch_size)):
+            train_one_batch(
+                net,
+                real_imgs[i * net_params.batch_size : min((i + 1) * net_params.batch_size - 1, whole_size)],
+                fake_dreamt_img[i * net_params.batch_size : min((i + 1) * net_params.batch_size - 1, whole_size)])
+## test
+print(device)
+train_net = AwakeNet(n_dis =1)
+train_net.initial()
+train_net.to(device)
+train_net.train()
+train(train_net, torch.ones((160,3,512,512)).to(device), torch.ones((160,3,512,512)).to(device))
+>>>>>>> 909c74031a5e818be9d304dad3d0f31736f198e2
 
