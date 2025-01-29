@@ -51,5 +51,5 @@ def process_images_in_folder(input_folder, output_folder):
 
 
 input_folder = "src\\U-Net\\input"  # 输入文件夹路径
-output_folder = "src\\U-Net"  # 输出文件夹路径
+output_folder = "src\\U-Net\\output"  # 输出文件夹路径
 process_images_in_folder(input_folder, output_folder)
