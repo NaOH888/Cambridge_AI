@@ -17,46 +17,58 @@ class AwakeNetGen(nn.Module):
         super(AwakeNetGen, self).__init__()
         # in : [batch_size, 3, 512, 512]
         self.conv1 = nn.Conv2d(in_channels=net_params.input_image_depth,
-                               out_channels=10,
+                               out_channels=64,
                                kernel_size=(7,7),
                                stride=2,
                                padding=20)
         self.pool1 = nn.MaxPool2d(kernel_size=7, stride=2, padding=3)
-        self.bn1 = nn.BatchNorm2d(10)
+        self.bn1 = nn.BatchNorm2d(64)
         self.activ1 = nn.LeakyReLU(negative_slope=0.2)
-        self.conv2 = nn.Conv2d(in_channels=10,
-                               out_channels=10,
+        self.conv2 = nn.Conv2d(in_channels=64,
+                               out_channels=128,
                                kernel_size=(7,7),
                                stride=1,
                                padding=20)
         self.pool2 = nn.MaxPool2d(kernel_size=7, stride=1, padding=3)
-        self.bn2 = nn.BatchNorm2d(10)
+        self.bn2 = nn.BatchNorm2d(128)
         self.activ2 = nn.LeakyReLU(negative_slope=0.2)
         self.do = nn.Dropout(p=0.2)
-        self.conv3 = nn.Conv2d(in_channels=10,
-                               out_channels=10,
+        self.conv3 = nn.Conv2d(in_channels=128,
+                               out_channels=128,
                                kernel_size=(7,7),
-                               stride=2,
+                               stride=1,
                                padding=20)
-        self.pool3 = nn.MaxPool2d(kernel_size=7, stride=2, padding=3)
+        self.pool3 = nn.MaxPool2d(kernel_size=7, stride=1, padding=3)
         self.activ3 = nn.LeakyReLU(negative_slope=0.2)
-        self.bn3 = nn.BatchNorm2d(10)
-        self.conv4 = nn.Conv2d(in_channels=10,
-                               out_channels=3,
+        self.bn3 = nn.BatchNorm2d(128)
+        self.conv4 = nn.Conv2d(in_channels=128,
+                               out_channels=64,
                                kernel_size=(7,7),
-                               stride=2,
-                               padding=15)
+                               stride=1,
+                               padding=20)
+        self.bn4 = nn.BatchNorm2d(64)
+        self.activ4 = nn.LeakyReLU(negative_slope=0.2)
+
+        self.conv5 = nn.Conv2d(in_channels=64,
+                               out_channels=3,
+                               kernel_size=(7, 7),
+                               stride=1,
+                               padding=20)
+        self.bn5 = nn.BatchNorm2d(3)
+        self.activ5 = nn.LeakyReLU(negative_slope=0.2)
 
         self.pool4 = nn.AdaptiveAvgPool3d(output_size=(3, 512, 128))
-        self.bn4 = nn.BatchNorm2d(3)
-        self.activ4 = nn.LeakyReLU(negative_slope=0.2)
+
+
         self.do2 = nn.Dropout(p=0.2)
         # 现在应该是 [batch, 3, 64, 64],
         self.fc1 = nn.Linear(in_features=128, out_features=512,bias=True)
-        self.activ5 = nn.LeakyReLU(negative_slope=0.2)
+        self.activ6 = nn.LeakyReLU(negative_slope=0.2)
         # [batch,64, 512]
-        self.fc2 = nn.Linear(in_features=512, out_features=512, bias=True)
-        self.activ6 = nn.Tanh()
+        self.fc2 = nn.Linear(in_features=512, out_features=1024, bias=True)
+        self.activ7 = nn.LeakyReLU(negative_slope=0.2)
+        self.fc3 = nn.Linear(in_features=1024, out_features=512, bias=True)
+        self.activ8 = nn.Tanh()
         # then resize to [batch, 3, 512, 512]
         self.optim = torch.optim.Adam(self.parameters(), lr=net_params.learning_rate)
 
@@ -76,31 +88,41 @@ class AwakeNetGen(nn.Module):
         x = self.pool1(x)
         x = self.bn1(x)
         x = self.activ1(x)
+
         x = self.conv2(x)
         x = self.pool2(x)
         x = self.bn2(x)
         x = self.activ2(x)
+
         x = self.do(x)
+
         x = self.conv3(x)
         x = self.pool3(x)
-        x = self.bn3(x)
         x = self.activ3(x)
+        x = self.bn3(x)
+
         x = self.conv4(x)
-        x = self.pool4(x)
         x = self.bn4(x)
         x = self.activ4(x)
-        x = self.do2(x)
-        x = self.bn4(x)
-        x = self.fc1(x)
+
+        x = self.conv5(x)
+        x = self.bn5(x)
         x = self.activ5(x)
+
+        x = self.pool4(x)
+        x = self.do2(x)
+        x = self.fc1(x)
+        x = self.activ6(x)
         x = self.fc2(x)
-        x = (self.activ6(x) + 1) / 2 * 255
+        x = self.activ7(x)
+        x = self.fc3(x)
+        x = (self.activ8(x) + 1) / 2 * 255
         x = torch.reshape(x, shape=[bs, 3, 512, 512])
         return x
     def initialize_weights(self):
         for m in self.modules():
-            if isinstance(m, nn.ConvTranspose2d):
-                torch.nn.init.xavier_uniform_(m.weight)
+            if isinstance(m, nn.BatchNorm2d):
+                torch.nn.init.kaiming_normal_(m.weight)
                 nn.init.constant_(m.bias, 0.1)
             if isinstance(m, nn.Conv2d):
                 torch.nn.init.xavier_uniform_(m.weight)
@@ -108,6 +130,7 @@ class AwakeNetGen(nn.Module):
             if isinstance(m, nn.Linear):
                 torch.nn.init.kaiming_normal_(m.weight, mode='fan_in')
                 nn.init.constant_(m.bias, 0.1)
+
 
 
 class AwakeNetDis(nn.Module):
@@ -198,7 +221,7 @@ class AwakeNet(nn.Module):
         else:
             self.generator = AwakeNetGen()
             self.generator.initialize_weights()
-
+        """
         if os.path.exists(r"./pre_trained/discriminators.pth"):
             self.discriminators = torch.load(r"./pre_trained/discriminators.pth")
         else:
@@ -206,16 +229,16 @@ class AwakeNet(nn.Module):
             for i in range(n_dis):
                 self.discriminators.add_module(str(i), AwakeNetDis())
             for dis in self.discriminators:
-                dis.initialize_weights()
+                dis.initialize_weights()"""
         if mode == 'train':
-            self.discriminators.train()
+            #self.discriminators.train()
             self.generator.train()
         else:
-            self.discriminators.eval()
+            #self.discriminators.eval()
             self.generator.eval()
     def saveParam(self):
         torch.save(self.generator, r"./pre_trained/generator.pth")
-        torch.save(self.discriminators, r"./pre_trained/discriminators.pth")
+        #torch.save(self.discriminators, r"./pre_trained/discriminators.pth")
     def forward(self, real : torch.Tensor, dream : torch.Tensor):
 
         # x & dream : [batch, depth, size_X, size_Y]

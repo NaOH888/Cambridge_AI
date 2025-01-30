@@ -101,4 +101,4 @@ print("end loading data")
 print("start training")
 #train(train_net, r_datas, f_datas)
 
-pretrain_for_generator(train_net, r_datas, f_datas, epoches=100)
+pretrain_for_generator(train_net, r_datas, f_datas, epoches=500)
